@@ -1,0 +1,73 @@
+bathroom, bedroom ve livingroom nullar 0 olarak değiştirilecek
+floorAreaSqm nullar silinecek
+tenure:
+leasehold: kira hakkı Apartman daireleri genellikle leasehold olarak satın alınır. (kiracı gibi)
+freehold: hem mülk hem arazi sahibi. Müstakil evler
+feudal: Feodal
+shared ownership: kişi bir kısmına kalan kısmına başka bir dernek sahip
+tenure nullar silinecek
+
+currentEnergyRating opsiyonel silinebilir column olarak
+
+rentEstimate_currentPrice, rentEstimate_lowerPrice, rentEstimate_upperPrice nullar silinecek
+
+Total number of data entries: 282872
++-------------------------------------------+---------------+
+| Feature                                   |   Null Values |
++===========================================+===============+
+| fullAddress                               |             0 |
++-------------------------------------------+---------------+
+| postcode                                  |             0 |
++-------------------------------------------+---------------+
+| country                                   |             0 |
++-------------------------------------------+---------------+
+| outcode                                   |             0 |
++-------------------------------------------+---------------+
+| latitude                                  |             0 |
++-------------------------------------------+---------------+
+| longitude                                 |             0 |
++-------------------------------------------+---------------+
+| bathrooms                                 |         51103 |
++-------------------------------------------+---------------+
+| bedrooms                                  |         26218 |
++-------------------------------------------+---------------+
+| floorAreaSqM                              |         15812 |
++-------------------------------------------+---------------+
+| livingRooms                               |         39135 |
++-------------------------------------------+---------------+
+| tenure                                    |          6311 |
++-------------------------------------------+---------------+
+| propertyType                              |           675 |
++-------------------------------------------+---------------+
+| currentEnergyRating                       |         58311 |
++-------------------------------------------+---------------+
+| rentEstimate_lowerPrice                   |          1222 |
++-------------------------------------------+---------------+
+| rentEstimate_currentPrice                 |          1222 |
++-------------------------------------------+---------------+
+| rentEstimate_upperPrice                   |          1222 |
++-------------------------------------------+---------------+
+| saleEstimate_lowerPrice                   |           549 |
++-------------------------------------------+---------------+
+| saleEstimate_currentPrice                 |           549 |
++-------------------------------------------+---------------+
+| saleEstimate_upperPrice                   |           549 |
++-------------------------------------------+---------------+
+| saleEstimate_confidenceLevel              |           549 |
++-------------------------------------------+---------------+
+| saleEstimate_ingestedAt                   |           549 |
++-------------------------------------------+---------------+
+| saleEstimate_valueChange.numericChange    |           549 |
++-------------------------------------------+---------------+
+| saleEstimate_valueChange.percentageChange |           549 |
++-------------------------------------------+---------------+
+| saleEstimate_valueChange.saleDate         |           549 |
++-------------------------------------------+---------------+
+| history_date                              |             0 |
++-------------------------------------------+---------------+
+| history_price                             |             0 |
++-------------------------------------------+---------------+
+| history_percentageChange                  |        122213 |
++-------------------------------------------+---------------+
+| history_numericChange                     |        122213 |
++-------------------------------------------+---------------+
