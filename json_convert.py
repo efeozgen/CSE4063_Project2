@@ -81,8 +81,17 @@ if __name__ == "__main__":
     final_csv_file = os.path.join(current_dir, 'final_clean_data.csv')
     
     csv_to_json(csv_file, json_file)
-    drop_features(json_file, final_json_file, ['history_percentageChange', 'history_numericChange', 'currentEnergyRating'])
+    drop_features(json_file, final_json_file, [
+        'fullAddress', 'postcode', 'country', 'outcode', 'history_date', 
+        'saleEstimate_ingestedAt', 'saleEstimate_valueChange.saleDate',
+        'currentEnergyRating', 'history_percentageChange', 'history_numericChange'
+    ])
     remove_null_floor_area(final_json_file, final_json_file)
     replace_null_values(final_json_file, final_json_file)
     remove_null_rent_estimate(final_json_file, final_json_file)
     json_to_csv(final_json_file, final_csv_file)
+    
+    # Print final data entries count
+    with open(final_json_file, mode='r', encoding='utf-8') as json_file:
+        final_data = json.load(json_file)
+    print(f"Final number of data entries: {len(final_data)}")

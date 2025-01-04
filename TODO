@@ -71,3 +71,14 @@ Total number of data entries: 282872
 +-------------------------------------------+---------------+
 | history_numericChange                     |        122213 |
 +-------------------------------------------+---------------+
+
+
+ÇIKARTILACAKLAR
+
+fullAddress
+postcode
+country
+outcode
+history_date
+saleEstimate_ingestedAt
+saleEstimate_valueChange.saleDate
