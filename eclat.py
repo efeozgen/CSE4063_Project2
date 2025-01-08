@@ -1,61 +1,101 @@
 import itertools
+from collections import defaultdict
+import matplotlib.pyplot as plt
+import seaborn as sns
+import json
 
 class ECLAT:
-    def __init__(self, dataset):
-        """
-        ECLAT algoritması için başlangıç.
-        :param dataset: Listelerden oluşan veri kümesi.
-        """
-        self.dataset = dataset
-        self.itemsets = {}
-    
-    def fit(self, min_support):
-        """
-        ECLAT algoritmasını çalıştırır.
-        :param min_support: Minimum destek değeri.
-        """
-        # Tüm öğeleri içeren bir liste oluştur
-        items = {}
-        for transaction_id, transaction in enumerate(self.dataset):
+    def __init__(self, json_file_path, min_support):
+       
+        self.json_file_path = json_file_path
+        self.min_support = min_support
+
+    def load_transactions(self):
+       
+        with open(self.json_file_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+
+        transactions = []
+        for entry in data:
+            transaction = []
+            if entry.get('bedrooms'):
+                transaction.append(f"{entry['bedrooms']} bedrooms")
+            if entry.get('tenure'):
+                transaction.append(entry['tenure'])
+            if entry.get('propertyType'):
+                transaction.append(entry['propertyType'])
+            transactions.append(transaction)
+
+        return transactions
+
+    def get_frequent_itemsets(self, transactions):
+       
+        itemsets = defaultdict(set)
+
+        # Step 1: Create an item-to-transaction mapping
+        for tid, transaction in enumerate(transactions):
             for item in transaction:
-                if item in items:
-                    items[item].add(transaction_id)
-                else:
-                    items[item] = {transaction_id}
+                itemsets[frozenset([item])].add(tid)
+
+        # Step 2: Recursive function to find larger itemsets
+        def find_frequent_itemsets(prefix, candidates):
+            results = {}
+            for i, (itemset, tids) in enumerate(candidates.items()):
+                support = len(tids)
+                if support >= self.min_support:
+                    results[itemset] = support
+                    new_candidates = {}
+
+                    for other_itemset, other_tids in list(candidates.items())[i + 1:]:
+                        union_itemset = itemset | other_itemset
+                        union_tids = tids & other_tids
+
+                        if len(union_tids) >= self.min_support:
+                            new_candidates[union_itemset] = union_tids
+
+                    results.update(find_frequent_itemsets(itemset, new_candidates))
+
+            return results
+
+        # Step 3: Find all frequent itemsets
+        return find_frequent_itemsets(frozenset(), itemsets)
+
+    def plot_top_frequent_itemsets(self, frequent_itemsets, top_n=20):
         
-        # Tüm öğe kümelerini hesapla
-        self.itemsets = {frozenset([item]): transactions 
-                         for item, transactions in items.items() 
-                         if len(transactions) >= min_support}
+        # Convert frequent itemsets to a sorted list of tuples
+        sorted_itemsets = sorted(frequent_itemsets.items(), key=lambda x: x[1], reverse=True)[:top_n]
+
+        # Prepare data for plotting
+        labels = [" + ".join(map(str, itemset)) for itemset, _ in sorted_itemsets]
+        support_values = [support for _, support in sorted_itemsets]
+
+        # Plotting
+        plt.figure(figsize=(10, 6))
+        sns.barplot(x=support_values, y=labels, palette="viridis")
+        plt.title(f"Top {top_n} Frequent Itemsets", fontsize=14)
+        plt.xlabel("Support", fontsize=12)
+        plt.ylabel("Itemsets", fontsize=12)
+        plt.tight_layout()
+        plt.show()
+
+    def run(self):
+       
+        transactions = self.load_transactions()
+        frequent_itemsets = self.get_frequent_itemsets(transactions)
         
-        k = 2
-        while True:
-            new_combinations = self._generate_combinations(k)
-            if not new_combinations:
-                break
-            k += 1
-    
-    def _generate_combinations(self, k):
-        """
-        Yeni öğe kombinasyonları oluştur.
-        """
-        new_combinations = {}
-        keys = list(self.itemsets.keys())
-        
-        for i, key1 in enumerate(keys):
-            for key2 in keys[i + 1:]:
-                union_set = key1.union(key2)
-                if len(union_set) == k:
-                    transactions = self.itemsets[key1].intersection(self.itemsets[key2])
-                    if len(transactions) >= min_support:
-                        new_combinations[union_set] = transactions
-        
-        if new_combinations:
-            self.itemsets.update(new_combinations)
-        return new_combinations
-    
-    def get_frequent_itemsets(self):
-        """
-        Sık öğe kümelerini al.
-        """
-        return {item: len(transactions) for item, transactions in self.itemsets.items()}
+        # Call the plot function to visualize the results
+        self.plot_top_frequent_itemsets(frequent_itemsets)
+
+        return frequent_itemsets
+
+if __name__ == "__main__":
+    # Example usage
+    json_file = "final_clean_data.json"
+    min_support = 50
+
+    eclat = ECLAT(json_file, min_support)
+    frequent_itemsets = eclat.run()
+
+    print("Frequent Itemsets:")
+    for itemset, support in frequent_itemsets.items():
+        print(f"{set(itemset)}: {support}")

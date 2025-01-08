@@ -1,63 +1,79 @@
-from sklearn.neighbors import NearestNeighbors
+import json
 import numpy as np
+from sklearn.cluster import DBSCAN
+from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
 
-class DBSCAN:
-    def __init__(self, eps, min_samples):
-        """
-        DBSCAN algoritması için başlangıç.
-        :param eps: Komşuluk yarıçapı.
-        :param min_samples: Minimum nokta sayısı.
-        """
+class DBSCANClusterer:
+    def __init__(self, json_file_path, batch_size=10000, eps=0.05, min_samples=5):
+       
+        self.json_file_path = json_file_path
+        self.batch_size = batch_size
         self.eps = eps
         self.min_samples = min_samples
-        self.labels = None
-    
-    def fit(self, data):
-        """
-        DBSCAN algoritmasını çalıştırır.
-        :param data: Numpy array veya liste veri kümesi.
-        """
-        num_points = len(data)
-        self.labels = np.full(num_points, -1)  # Gürültü noktalar başlangıçta -1 ile etiketlenir
-        cluster_id = 0
+
+    def load_data(self):
+
+        with open(self.json_file_path, 'r') as file:
+            data = json.load(file)
+        return data
+
+    def process_data(self):
         
-        # Tüm noktalar için komşu noktaları hesapla
-        neighbors_model = NearestNeighbors(radius=self.eps).fit(data)
-        distances, neighbors = neighbors_model.radius_neighbors(data)
+        data = self.load_data()
+        all_points = []
+        all_labels = []
+
+        for i in range(0, len(data), self.batch_size):
+            batch = data[i:i + self.batch_size]
+
+            # Extract prices
+            prices = [float(item['saleEstimate_currentPrice']) for item in batch if item.get('saleEstimate_currentPrice')]
+            prices = np.array(prices).reshape(-1, 1)
+
+            # Normalize prices
+            scaler = MinMaxScaler()
+            prices_normalized = scaler.fit_transform(prices)
+            all_points.append(prices_normalized)
+
+            # Apply DBSCAN
+            model = DBSCAN(eps=self.eps, min_samples=self.min_samples)
+            labels = model.fit_predict(prices_normalized)
+            all_labels.append(labels)
+
+        # Combine all points and labels
+        all_points = np.vstack(all_points)
+        all_labels = np.concatenate(all_labels)
+
+        return all_points, all_labels
+
+    def plot_clusters(self, all_points, all_labels):
         
-        for point_idx in range(num_points):
-            if self.labels[point_idx] != -1:
-                continue  # Zaten işlenmiş
-            
-            # Komşuları belirle
-            neighbor_indices = neighbors[point_idx]
-            if len(neighbor_indices) < self.min_samples:
-                self.labels[point_idx] = -1  # Gürültü
+        unique_labels = set(all_labels)
+        for label in unique_labels:
+            if label == -1:  # Mark noise points
+                color = 'red'
+                marker = 'x'
             else:
-                # Yeni bir küme başlat
-                self._expand_cluster(data, neighbors, point_idx, cluster_id, neighbor_indices)
-                cluster_id += 1
-    
-    def _expand_cluster(self, data, neighbors, point_idx, cluster_id, neighbor_indices):
-        """
-        Küme genişletme işlemi.
-        """
-        self.labels[point_idx] = cluster_id
-        queue = list(neighbor_indices)
-        
-        while queue:
-            current_point = queue.pop(0)
-            if self.labels[current_point] == -1:  # Gürültüyse kümele
-                self.labels[current_point] = cluster_id
-            
-            elif self.labels[current_point] == -1:
-                self.labels[current_point] = cluster_id
-                current_neighbors = neighbors[current_point]
-                if len(current_neighbors) >= self.min_samples:
-                    queue.extend(current_neighbors)
-    
-    def get_labels(self):
-        """
-        Nokta etiketlerini döndür.
-        """
-        return self.labels
+                color = 'blue'
+                marker = 'o'
+
+            cluster_points = all_points[all_labels == label]
+            plt.scatter(cluster_points, np.zeros_like(cluster_points), c=color, label=f'Cluster {label}', marker=marker)
+
+        plt.title('DBSCAN Clustering on Prices (All Batches)')
+        plt.xlabel('Normalized Sale Price')
+        plt.legend()
+        plt.show()
+
+    def run(self):
+      
+        all_points, all_labels = self.process_data()
+        self.plot_clusters(all_points, all_labels)
+        return all_points, all_labels
+
+if __name__ == "__main__":
+    # Example usage
+    json_file = "final_clean_data.json"
+    dbscan_clusterer = DBSCANClusterer(json_file)
+    all_points, all_labels = dbscan_clusterer.run()
