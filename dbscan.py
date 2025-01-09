@@ -1,79 +1,98 @@
+import pandas as pd
 import json
-import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
-from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
-class DBSCANClusterer:
-    def __init__(self, json_file_path, batch_size=10000, eps=0.05, min_samples=5):
-       
-        self.json_file_path = json_file_path
-        self.batch_size = batch_size
-        self.eps = eps
-        self.min_samples = min_samples
+class DBSCANClustering:
+    def __init__(self):
+        self.df = None
 
-    def load_data(self):
-
-        with open(self.json_file_path, 'r') as file:
-            data = json.load(file)
-        return data
-
-    def process_data(self):
+    def load_data(self, file_name):
+        # JSON verisini oku
+        with open(file_name, 'r') as f:
+            data = json.load(f)
         
-        data = self.load_data()
-        all_points = []
-        all_labels = []
-
-        for i in range(0, len(data), self.batch_size):
-            batch = data[i:i + self.batch_size]
-
-            # Extract prices
-            prices = [float(item['saleEstimate_currentPrice']) for item in batch if item.get('saleEstimate_currentPrice')]
-            prices = np.array(prices).reshape(-1, 1)
-
-            # Normalize prices
-            scaler = MinMaxScaler()
-            prices_normalized = scaler.fit_transform(prices)
-            all_points.append(prices_normalized)
-
-            # Apply DBSCAN
-            model = DBSCAN(eps=self.eps, min_samples=self.min_samples)
-            labels = model.fit_predict(prices_normalized)
-            all_labels.append(labels)
-
-        # Combine all points and labels
-        all_points = np.vstack(all_points)
-        all_labels = np.concatenate(all_labels)
-
-        return all_points, all_labels
-
-    def plot_clusters(self, all_points, all_labels):
+        df = pd.DataFrame(data)
+        print(f"Loaded Data Shape: {df.shape}")  # Verinin şekline bakın
         
-        unique_labels = set(all_labels)
-        for label in unique_labels:
-            if label == -1:  # Mark noise points
-                color = 'red'
-                marker = 'x'
-            else:
-                color = 'blue'
-                marker = 'o'
+        # Sayısal verilere dönüştür
+        df = df.apply(pd.to_numeric, errors='coerce')  # Dönüştürürken hata verirse NaN yapar
+        
+        # Kategorik sütunları geçici olarak çıkar
+        df = df.drop(columns=['tenure', 'propertyType', 'saleEstimate_confidenceLevel'])
+        
+        # Eksik verileri at
+        df = df.dropna()  # NaN olan satırları sil
+        
+        print(f"Cleaned Data Shape: {df.shape}")  # Temizlenmiş verinin şekli
+        return df
 
-            cluster_points = all_points[all_labels == label]
-            plt.scatter(cluster_points, np.zeros_like(cluster_points), c=color, label=f'Cluster {label}', marker=marker)
+    def scale_data(self, data):
+        # Veriyi standartlaştır
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(data)
+        return scaled_data
 
-        plt.title('DBSCAN Clustering on Prices (All Batches)')
-        plt.xlabel('Normalized Sale Price')
-        plt.legend()
+    def reduce_dimensions(self, data, n_components=2):
+        # Veriyi PCA ile 2 boyuta indir
+        pca = PCA(n_components=n_components)
+        reduced_data = pca.fit_transform(data)
+        return reduced_data
+
+    def fit(self, data):
+        # DBSCAN algoritması ile kümeleme yap
+        dbscan = DBSCAN(eps=0.4, min_samples=10)  # DBSCAN parametrelerini buradan ayarlayabilirsiniz
+        labels = dbscan.fit_predict(data)
+        return labels
+
+    def cluster_and_visualize(self, file_name):
+        # Veriyi yükle
+        self.df = self.load_data(file_name)
+
+        # Verinin büyüklüğünü kontrol et
+        if len(self.df) == 0:
+            raise ValueError("Dataframe is empty. Check the data loading process.")
+        
+        # Yeni özellikler seç (rentEstimate_currentPrice, saleEstimate_currentPrice, floorAreaSqM)
+        features = ['rentEstimate_currentPrice', 'saleEstimate_currentPrice', 'floorAreaSqM']
+        subset_df = self.df[features]
+        
+        # Subset al (ilk 10000 satır)
+        subset_df = subset_df.sample(n=min(10000, len(subset_df)), random_state=42)
+        print(f"Subset Data Shape: {subset_df.shape}")
+
+        # Veriyi ölçeklendir
+        scaled_data = self.scale_data(subset_df.values)
+
+        # Boyutları indir
+        reduced_data = self.reduce_dimensions(scaled_data, n_components=2)
+
+        # DBSCAN ile kümeleme yap
+        labels = self.fit(scaled_data)
+        print("Clustering completed.")
+
+        # DBSCAN sonucunu görselleştir
+        plt.figure(figsize=(8, 6))
+        plt.scatter(reduced_data[:, 0], reduced_data[:, 1], c=labels, cmap='viridis', s=10)
+        plt.title("DBSCAN Clustering Visualization (First 2 PCA Components)")
+        plt.xlabel("Principal Component 1")
+        plt.ylabel("Principal Component 2")
+        plt.colorbar(label='Cluster')
         plt.show()
 
-    def run(self):
-      
-        all_points, all_labels = self.process_data()
-        self.plot_clusters(all_points, all_labels)
-        return all_points, all_labels
+        # Her küme için istatistiksel analiz
+        subset_df['Cluster'] = labels
+        cluster_summary = subset_df.groupby('Cluster').mean()
+        print("Cluster Summary:")
+        print(cluster_summary)
 
+        return labels
+
+# Uygulama kısmı
 if __name__ == "__main__":
-    # Example usage
-    json_file = "final_clean_data.json"
-    dbscan_clusterer = DBSCANClusterer(json_file)
-    all_points, all_labels = dbscan_clusterer.run()
+    visualization = DBSCANClustering()
+    labels = visualization.cluster_and_visualize('final_clean_data.json')
